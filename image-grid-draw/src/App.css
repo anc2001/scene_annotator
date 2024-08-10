@@ -1,0 +1,52 @@
+.App {
+  text-align: center;
+}
+
+.button-container {
+  margin-bottom: 20px;
+}
+
+.button-container button,
+.button-container input {
+  margin: 5px;
+}
+
+.opacity-slider {
+  display: inline-block;
+  margin: 0 10px;
+}
+
+.folder-name {
+  margin: 20px 0;
+}
+
+.image-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  width: 100%; /* Ensure the container takes full width */
+}
+
+.image-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+}
+
+.half-width-image {
+  width: 45vw; /* Each image takes up 45% of the viewport width when both are shown */
+  height: auto;
+}
+
+.full-width-image {
+  width: 70vw; /* Occupy up to 90% of the viewport width when shown alone */
+  height: auto;
+}
+
+h3 {
+  margin-bottom: 10px;
+}
