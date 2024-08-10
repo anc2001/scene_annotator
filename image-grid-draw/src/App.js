@@ -3,7 +3,7 @@ import { Stage, Layer, Line, Rect, Image as KonvaImage, Arrow } from 'react-konv
 import axios from 'axios';
 import './App.css';
 
-const apiPort = process.env.REACT_APP_API_PORT || 5000;
+const apiPort = process.env.REACT_APP_API_PORT || 5001;
 
 const GRID_WIDTH = 256; // Default number of grid cells in the width dimension
 const GRID_HEIGHT = 256; // Default number of grid cells in the height dimension
