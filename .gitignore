@@ -16,3 +16,4 @@ yarn-error.log*
 # Ignore VS Code settings
 .vscode/
 
+*.DS_Store

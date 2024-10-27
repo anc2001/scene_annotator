@@ -34,6 +34,7 @@ const App = () => {
   const layerRef = useRef(null);
   const inputRef = useRef(null); // Create a ref for the input element
   const imageRef = useRef(null); // Create a ref for the scene image
+  const [startCell, setStartCell] = useState(null); // Store the starting cell for Shift key drawing
 
   useEffect(() => {
     const updateStageSize = () => {
@@ -173,6 +174,7 @@ const App = () => {
 
   const handleMouseUp = () => {
     setIsDrawing(false);
+    setStartCell(null); // Reset start cell after finishing drawing
   };
 
   const handleCellClick = (e) => {
@@ -184,15 +186,41 @@ const App = () => {
     const y = Math.floor(pointerPosition.y / cellHeight);
     const cellKey = `${x}-${y}`;
 
-    setCells((prevCells) => {
-      const newCells = { ...prevCells };
-      if (drawMode === 'draw') {
-        newCells[cellKey] = true; // Mark the cell as filled
-      } else if (drawMode === 'erase') {
-        delete newCells[cellKey]; // Remove the filled cell
+    if (e.evt.shiftKey && startCell) {
+      // Handle shift + drag for straight lines
+      const [startX, startY] = startCell.split('-').map(Number);
+      const newCells = { ...cells };
+
+      if (startX === x) {
+        // Vertical line
+        const [minY, maxY] = [startY, y].sort((a, b) => a - b);
+        for (let i = minY; i <= maxY; i++) {
+          newCells[`${startX}-${i}`] = true;
+        }
+      } else if (startY === y) {
+        // Horizontal line
+        const [minX, maxX] = [startX, x].sort((a, b) => a - b);
+        for (let i = minX; i <= maxX; i++) {
+          newCells[`${i}-${startY}`] = true;
+        }
       }
-      return newCells;
-    });
+
+      setCells(newCells);
+    } else {
+      setCells((prevCells) => {
+        const newCells = { ...prevCells };
+        if (drawMode === 'draw') {
+          newCells[cellKey] = true; // Mark the cell as filled
+        } else if (drawMode === 'erase') {
+          delete newCells[cellKey]; // Remove the filled cell
+        }
+        return newCells;
+      });
+
+      if (e.evt.shiftKey) {
+        setStartCell(cellKey); // Set the starting cell for shift key drawing
+      }
+    }
   };
 
   const handleSave = async () => {
