@@ -17,6 +17,7 @@ const App = () => {
   const [sceneImage, setSceneImage] = useState(null);
   const [originalSceneImage, setOriginalSceneImage] = useState(null); // Store the original scene image
   const [showOriginalScene, setShowOriginalScene] = useState(false); // Toggle for showing the original scene image
+  const [keyImage, setKeyImage] = useState(null); // State to store the key image
   const [queryObjectImage, setQueryObjectImage] = useState(null); // Store the query object image
   const [hoverImage, setHoverImage] = useState(null); // Store the hover image
   const [folders, setFolders] = useState([]);
@@ -92,17 +93,20 @@ const App = () => {
     const sceneFile = files.find(file => file.webkitRelativePath.includes(`${folder}/scene.png`));
     const originalSceneFile = files.find(file => file.webkitRelativePath.includes(`${folder}/original_scene.png`));
     const queryObjectFile = files.find(file => file.webkitRelativePath.includes(`${folder}/query_object.png`));
+    const keyFile = files.find(file => file.webkitRelativePath.includes(`${folder}/key.png`));
     const infoFile = files.find(file => file.webkitRelativePath.includes(`${folder}/info.json`));
 
     console.log('Scene File:', sceneFile);
     console.log('Original Scene File:', originalSceneFile);
     console.log('Query Object File:', queryObjectFile);
+    console.log('Key Image File:', keyFile);
     console.log('Info File:', infoFile);
 
-    if (sceneFile && originalSceneFile && queryObjectFile && infoFile) {
+    if (sceneFile && originalSceneFile && queryObjectFile && keyFile && infoFile) {
       const sceneReader = new FileReader();
       const originalSceneReader = new FileReader();
       const queryObjectReader = new FileReader();
+      const keyReader = new FileReader();
       const infoReader = new FileReader();
 
       sceneReader.onload = (e) => {
@@ -128,6 +132,10 @@ const App = () => {
           setHoverImage(img);
         };
       };
+      keyReader.onload = (e) => {
+        console.log('Key Image Loaded:', e.target.result);
+        setKeyImage(e.target.result); // Set the key image
+      };
       infoReader.onload = (e) => {
         console.log('Info File Loaded:', e.target.result);
         const infoData = JSON.parse(e.target.result);
@@ -137,6 +145,7 @@ const App = () => {
       sceneReader.readAsDataURL(sceneFile);
       originalSceneReader.readAsDataURL(originalSceneFile);
       queryObjectReader.readAsDataURL(queryObjectFile);
+      keyReader.readAsDataURL(keyFile);
       infoReader.readAsText(infoFile);
     } else {
       console.error('One or more required files not found in the selected folder');
@@ -420,15 +429,22 @@ const handleMouseUp = (e) => {
       </div>
       <div className="folder-name">
         <h2>
-          Current Folder: {currentFolderName} | Name: {infoName}
+          Current Subscene: {currentFolderName} | To Place: {infoName}
         </h2>
         {isAnnotated && <span style={{ color: 'green', fontSize: '24px' }}>✔️ Annotated</span>}
       </div>
+
       <div className="image-container" style={{ display: 'flex', justifyContent: showOriginalScene ? 'space-between' : 'center' }}>
         <div className="image-wrapper" style={{ position: 'relative' }}>
+          {keyImage && (
+          <div style={{ marginBottom: '10px' }}>
+            <img src={keyImage} alt="Key" className="key-image" />
+          </div>
+          )}
           <h3>Partial Scene</h3>
+
           {sceneImage && (
-            <>
+            <div style={{ position: 'relative' }}>
               <img
                 src={sceneImage}
                 alt="Scene"
@@ -449,7 +465,7 @@ const handleMouseUp = (e) => {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 ref={stageRef}
-                style={{ position: 'absolute', top: 50, left: 0, zIndex: 2 }}
+                style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
               >
                 <Layer ref={layerRef}>
                   {drawGrid()}
@@ -497,7 +513,7 @@ const handleMouseUp = (e) => {
                   )}
                 </Layer>
               </Stage>
-            </>
+            </div>
           )}
         </div>
         {showOriginalScene && (
@@ -507,6 +523,7 @@ const handleMouseUp = (e) => {
           </div>
         )}
       </div>
+
     </div>
   );
 };
