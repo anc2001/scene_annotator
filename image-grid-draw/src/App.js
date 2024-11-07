@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Line, Rect, Image as KonvaImage} from 'react-konva';
+import { Stage, Layer, Line, Rect, Image as KonvaImage, Arrow } from 'react-konva';
 import axios from 'axios';
 import './App.css';
 
@@ -315,6 +315,15 @@ const handleMouseUp = (e) => {
     setCells({});
   };
 
+    // Function to calculate arrow endpoint based on rotation
+  const calculateArrowPoints = (x, y, length, rotation) => {
+    const angle = (rotation * Math.PI) / 180; // Convert rotation to radians
+    const endX = x + length * Math.cos(angle);
+    const endY = y + length * Math.sin(angle);
+    return [x, y, endX, endY];
+  };
+
+
   const drawGrid = () => {
     const cellWidth = imageSize.width / GRID_WIDTH;
     const cellHeight = imageSize.height / GRID_HEIGHT;
@@ -470,6 +479,19 @@ const handleMouseUp = (e) => {
                         rotation={rotation} // Rotate by 90 degrees each time the button is pressed
                         offsetX={(imageSize.width / GRID_WIDTH) * rectWidth / 2}
                         offsetY={(imageSize.height / GRID_HEIGHT) * rectHeight / 2}
+                      />
+                      <Arrow
+                        points={calculateArrowPoints(
+                          hoverRect.x + (imageSize.width / GRID_WIDTH) * rectWidth / 2,
+                          hoverRect.y + (imageSize.height / GRID_HEIGHT) * rectHeight / 2,
+                          30, // Arrow length
+                          rotation // Rotation in degrees
+                        )}
+                        pointerLength={10}
+                        pointerWidth={10}
+                        fill="red"
+                        stroke="red"
+                        opacity={queryImageOpacity} // Set the opacity to match the query image
                       />
                     </>
                   )}
