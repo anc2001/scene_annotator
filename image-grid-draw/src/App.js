@@ -9,9 +9,9 @@ const GRID_WIDTH = 256; // Default number of grid cells in the width dimension
 const GRID_HEIGHT = 256; // Default number of grid cells in the height dimension
 
 const App = () => {
-  // Add a new draw mode for drawing lines
-  const [drawMode, setDrawMode] = useState('draw'); // Options: 'draw', 'erase', 'line'
-  const [proposedLine, setProposedLine] = useState(null);
+  const [drawMode, setDrawMode] = useState('draw'); // Options: 'draw', 'erase'
+  const [proposedRect, setProposedRect] = useState(null); // State to track the proposed rectangle
+  const [isRectPending, setIsRectPending] = useState(false); // Track if a rectangle is pending confirmation
   const [currentFolder, setCurrentFolder] = useState(0);
   const [currentFolderName, setCurrentFolderName] = useState(''); // Add state for current folder name
   const [sceneImage, setSceneImage] = useState(null);
@@ -37,7 +37,6 @@ const App = () => {
   const layerRef = useRef(null);
   const inputRef = useRef(null); // Create a ref for the input element
   const imageRef = useRef(null); // Create a ref for the scene image
-  const [startCell, setStartCell] = useState(null); // Store the starting cell for Shift key drawing
 
   useEffect(() => {
     const updateStageSize = () => {
@@ -158,7 +157,7 @@ const App = () => {
   };
 
   const handleMouseDown = (e) => {
-    if (drawMode === 'line') {
+    if (drawMode === 'draw' || drawMode === 'erase') {
       const stage = e.target.getStage();
       const pointerPosition = stage.getPointerPosition();
       const cellWidth = imageSize.width / GRID_WIDTH;
@@ -166,120 +165,122 @@ const App = () => {
       const x = Math.floor(pointerPosition.x / cellWidth);
       const y = Math.floor(pointerPosition.y / cellHeight);
 
-      // Set the starting point of the line
-      setProposedLine({ startX: x, startY: y, endX: x, endY: y });
+      // Start drawing the rectangle
+      setProposedRect({ startX: x, startY: y, endX: x, endY: y });
       setIsDrawing(true);
-    } else {
-      setIsDrawing(true);
-      handleCellClick(e);
     }
   };
 
   const handleMouseMove = (e) => {
-    if (drawMode === 'line' && isDrawing && proposedLine) {
-      const stage = e.target.getStage();
-      const pointerPosition = stage.getPointerPosition();
-      const cellWidth = imageSize.width / GRID_WIDTH;
-      const cellHeight = imageSize.height / GRID_HEIGHT;
-      const x = Math.floor(pointerPosition.x / cellWidth);
-      const y = Math.floor(pointerPosition.y / cellHeight);
-
-      // Update the end point of the proposed line
-      setProposedLine((prev) => ({ ...prev, endX: x, endY: y }));
-    } else {
-      const stage = e.target.getStage();
-      const pointerPosition = stage.getPointerPosition();
-
-      const cellWidth = imageSize.width / GRID_WIDTH;
-      const cellHeight = imageSize.height / GRID_HEIGHT;
-
-      // Calculate the position to center the rectangle on the cursor
-      const rectX = pointerPosition.x - (cellWidth * rectWidth) / 2;
-      const rectY = pointerPosition.y - (cellHeight * rectHeight) / 2;
-
-      // Update the hover rectangle position
-      setHoverRect({
-        x: rectX,
-        y: rectY
-      });
-
-      if (!isDrawing) return;
-      handleCellClick(e);
-    }
-  };
-
-const handleMouseUp = (e) => {
-  if (drawMode === 'line' && proposedLine) {
-    const newCells = { ...cells };
-    const { startX, startY, endX, endY } = proposedLine;
-
-    // Draw vertical or horizontal line based on proposed line
-    if (startX === endX) {
-      // Vertical line
-      const [minY, maxY] = [startY, endY].sort((a, b) => a - b);
-      for (let i = minY; i <= maxY; i++) {
-        newCells[`${startX}-${i}`] = true;
-      }
-    } else if (startY === endY) {
-      // Horizontal line
-      const [minX, maxX] = [startX, endX].sort((a, b) => a - b);
-      for (let i = minX; i <= maxX; i++) {
-        newCells[`${i}-${startY}`] = true;
-      }
-    }
-
-    setCells(newCells);
-    setProposedLine(null); // Clear the proposed line
-    setIsDrawing(false);
-  } else {
-    setIsDrawing(false);
-    setStartCell(null);
-  }
-};
-
-  const handleCellClick = (e) => {
     const stage = e.target.getStage();
     const pointerPosition = stage.getPointerPosition();
     const cellWidth = imageSize.width / GRID_WIDTH;
     const cellHeight = imageSize.height / GRID_HEIGHT;
-    const x = Math.floor(pointerPosition.x / cellWidth);
-    const y = Math.floor(pointerPosition.y / cellHeight);
-    const cellKey = `${x}-${y}`;
+    const hoverX = Math.floor(pointerPosition.x / cellWidth);
+    const hoverY = Math.floor(pointerPosition.y / cellHeight);
 
-    if (e.evt.shiftKey && startCell) {
-      // Handle shift + drag for straight lines
-      const [startX, startY] = startCell.split('-').map(Number);
-      const newCells = { ...cells };
+    // Calculate the position to center the rectangle on the cursor
+    let rectX = pointerPosition.x - (cellWidth * rectWidth) / 2;
+    let rectY = pointerPosition.y - (cellHeight * rectHeight) / 2;
+    if (isRectPending && proposedRect) {
+      // Clamp hover position within the proposed rectangle
+      const { startX, startY, endX, endY } = proposedRect;
 
-      if (startX === x) {
-        // Vertical line
-        const [minY, maxY] = [startY, y].sort((a, b) => a - b);
-        for (let i = minY; i <= maxY; i++) {
-          newCells[`${startX}-${i}`] = true;
+      const offsetX = (imageSize.width / GRID_WIDTH) * rectWidth / 2
+      const offsetY = (imageSize.height / GRID_HEIGHT) * rectHeight / 2
+
+      // Convert rectX and rectY to
+      rectX = rectX / cellWidth
+      rectY = rectY / cellHeight
+
+      rectX = Math.max(startX, Math.min(rectX, endX))
+      rectY = Math.max(startY, Math.min(rectY, endY))
+
+      rectX = (rectX * cellWidth)
+      rectY = (rectY * cellHeight)
+      rectX -= offsetX
+      rectY -= offsetY
+    }
+    setHoverRect({ x: rectX, y: rectY });
+
+    // If drawing, update the rectangle
+    if (isDrawing && proposedRect) {
+      setProposedRect((prev) => ({
+        ...prev,
+        endX: hoverX,
+        endY: hoverY,
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDrawing) {
+      if (drawMode === 'erase') {
+        // Finalize immediately for erase mode
+        if (proposedRect) {
+          const { startX, startY, endX, endY } = proposedRect;
+
+          // Calculate rectangle boundaries
+          const minX = Math.min(startX, endX);
+          const maxX = Math.max(startX, endX);
+          const minY = Math.min(startY, endY);
+          const maxY = Math.max(startY, endY);
+
+          // Update cells within the rectangle
+          setCells((prevCells) => {
+            const newCells = { ...prevCells };
+            for (let x = minX; x <= maxX; x++) {
+              for (let y = minY; y <= maxY; y++) {
+                const cellKey = `${x}-${y}`;
+                delete newCells[cellKey]; // Remove the cells for erase mode
+              }
+            }
+            return newCells;
+          });
         }
-      } else if (startY === y) {
-        // Horizontal line
-        const [minX, maxX] = [startX, x].sort((a, b) => a - b);
-        for (let i = minX; i <= maxX; i++) {
-          newCells[`${i}-${startY}`] = true;
-        }
+        setProposedRect(null); // Clear the proposed rectangle
+      } else if (drawMode === 'draw') {
+        // Set rectangle as pending for draw mode
+        setIsRectPending(true);
       }
+    }
+    setIsDrawing(false);
+  };
 
-      setCells(newCells);
-    } else {
+  const handleClearProposedRect = () => {
+    setProposedRect(null);
+    setIsRectPending(false);
+  };
+
+  const handleConfirmRectangle = () => {
+    if (proposedRect) {
+      const { startX, startY, endX, endY } = proposedRect;
+
+      // Calculate rectangle boundaries
+      const minX = Math.min(startX, endX);
+      const maxX = Math.max(startX, endX);
+      const minY = Math.min(startY, endY);
+      const maxY = Math.max(startY, endY);
+
+      // Update cells within the rectangle
       setCells((prevCells) => {
         const newCells = { ...prevCells };
-        if (drawMode === 'draw') {
-          newCells[cellKey] = true; // Mark the cell as filled
-        } else if (drawMode === 'erase') {
-          delete newCells[cellKey]; // Remove the filled cell
+        for (let x = minX; x <= maxX; x++) {
+          for (let y = minY; y <= maxY; y++) {
+            const cellKey = `${x}-${y}`;
+            if (drawMode === 'draw') {
+              newCells[cellKey] = true;
+            } else if (drawMode === 'erase') {
+              delete newCells[cellKey];
+            }
+          }
         }
         return newCells;
       });
 
-      if (e.evt.shiftKey) {
-        setStartCell(cellKey); // Set the starting cell for shift key drawing
-      }
+      // Clear the proposed rectangle
+      setProposedRect(null);
+      setIsRectPending(false);
     }
   };
 
@@ -395,9 +396,16 @@ const handleMouseUp = (e) => {
         />
         <button onClick={() => setDrawMode('draw')}>Draw</button>
         <button onClick={() => setDrawMode('erase')}>Erase</button>
-        <button onClick={() => setDrawMode('line')}>Draw Line</button>
-        <button onClick={handleClear}>Clear</button>
-        <button onClick={handleRotate}>Rotate</button>
+        <button onClick={handleClear}>Clear Canvas</button>
+        {drawMode === 'draw' && isRectPending && (
+          <>
+            <button onClick={handleConfirmRectangle}>Confirm Rectangle</button>
+            <button onClick={handleClearProposedRect}>Clear Proposed Rectangle</button>
+          </>
+        )}
+        {!isRectPending && (
+          <button onClick={handleRotate}>Rotate</button>
+        )}
         <button onClick={handleSave}>Save</button>
         <button onClick={handlePreviousFolder}>Previous Folder</button>
         <button onClick={handleNextFolder}>Next Folder</button>
@@ -470,17 +478,15 @@ const handleMouseUp = (e) => {
                 <Layer ref={layerRef}>
                   {drawGrid()}
                   {drawFilledCells()}
-                  {proposedLine && (
-                    <Line
-                      points={[
-                        proposedLine.startX * (imageSize.width / GRID_WIDTH),
-                        proposedLine.startY * (imageSize.height / GRID_HEIGHT),
-                        proposedLine.endX * (imageSize.width / GRID_WIDTH),
-                        proposedLine.endY * (imageSize.height / GRID_HEIGHT),
-                      ]}
-                      stroke="red"
-                      strokeWidth={2}
-                      dash={[5, 5]} // Dashed line to indicate a proposed line
+                  {proposedRect && (
+                    <Rect
+                      x={Math.min(proposedRect.startX, proposedRect.endX) * (imageSize.width / GRID_WIDTH)}
+                      y={Math.min(proposedRect.startY, proposedRect.endY) * (imageSize.height / GRID_HEIGHT)}
+                      width={Math.abs(proposedRect.endX - proposedRect.startX) * (imageSize.width / GRID_WIDTH)}
+                      height={Math.abs(proposedRect.endY - proposedRect.startY) * (imageSize.height / GRID_HEIGHT)}
+                      fill="rgba(0, 0, 0, 0.3)" // Semi-transparent fill for the proposed rectangle
+                      stroke="black" // Outline of the proposed rectangle
+                      strokeWidth={1}
                     />
                   )}
                   {hoverImage && (
