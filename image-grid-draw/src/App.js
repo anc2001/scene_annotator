@@ -385,30 +385,258 @@ const App = () => {
   };
 
   return (
-    <div className="App">
-      <div className="button-container">
-        <input 
-          type="file" 
-          webkitdirectory="true" 
-          directory="true" 
-          onChange={handleLoadDirectory} 
+    <div className="App" style={{ display: 'flex', height: '100vh' }}>
+      {/* Main content container */}
+      <div className="main-content" style={{ flex: 1, overflow: 'auto' }}>
+        <div className="folder-name">
+          <h2>
+            Current Folder: {currentFolderName} | Name: {infoName}
+          </h2>
+          {isAnnotated && <span style={{ color: 'green', fontSize: '24px' }}>✔️ Annotated</span>}
+        </div>
+        <div
+          className="image-container"
+          style={{
+            display: 'flex',
+            justifyContent: showOriginalScene ? 'space-between' : 'center',
+          }}
+        >
+          <div className="image-wrapper" style={{ position: 'relative' }}>
+            {keyImage && (
+              <div style={{ marginBottom: '10px' }}>
+                <img src={keyImage} alt="Key" className="key-image" />
+              </div>
+            )}
+            <h3>Partial Scene</h3>
+            {sceneImage && (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={sceneImage}
+                  alt="Scene"
+                  className={showOriginalScene ? 'half-width-image' : 'full-width-image'}
+                  ref={imageRef}
+                  onLoad={() => {
+                    if (imageRef.current) {
+                      const rect = imageRef.current.getBoundingClientRect();
+                      setImageSize({ width: rect.width, height: rect.height });
+                    }
+                  }}
+                  style={{ display: 'block', zIndex: 1 }}
+                />
+                <Stage
+                  width={imageSize.width}
+                  height={imageSize.height}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  ref={stageRef}
+                  style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
+                >
+                  <Layer ref={layerRef}>
+                    {drawGrid()}
+                    {drawFilledCells()}
+                    {proposedRect && (
+                      <Rect
+                        x={Math.min(proposedRect.startX, proposedRect.endX) * (imageSize.width / GRID_WIDTH)}
+                        y={Math.min(proposedRect.startY, proposedRect.endY) * (imageSize.height / GRID_HEIGHT)}
+                        width={Math.abs(proposedRect.endX - proposedRect.startX) * (imageSize.width / GRID_WIDTH)}
+                        height={Math.abs(proposedRect.endY - proposedRect.startY) * (imageSize.height / GRID_HEIGHT)}
+                        fill="rgba(0, 0, 0, 0.3)" // Semi-transparent fill for the proposed rectangle
+                        stroke="black" // Outline of the proposed rectangle
+                        strokeWidth={1}
+                      />
+                    )}
+                    {hoverImage && (
+                      <>
+                        <KonvaImage
+                          image={hoverImage}
+                          x={hoverRect.x + (imageSize.width / GRID_WIDTH) * rectWidth / 2}
+                          y={hoverRect.y + (imageSize.height / GRID_HEIGHT) * rectHeight / 2}
+                          width={(imageSize.width / GRID_WIDTH) * rectWidth}
+                          height={(imageSize.height / GRID_HEIGHT) * rectHeight}
+                          opacity={queryImageOpacity} // Set the opacity based on the query image slider value
+                          rotation={rotation} // Rotate by 90 degrees each time the button is pressed
+                          offsetX={(imageSize.width / GRID_WIDTH) * rectWidth / 2}
+                          offsetY={(imageSize.height / GRID_HEIGHT) * rectHeight / 2}
+                        />
+                        <Arrow
+                          points={calculateArrowPoints(
+                            hoverRect.x + (imageSize.width / GRID_WIDTH) * rectWidth / 2,
+                            hoverRect.y + (imageSize.height / GRID_HEIGHT) * rectHeight / 2,
+                            30, // Arrow length
+                            rotation // Rotation in degrees
+                          )}
+                          pointerLength={10}
+                          pointerWidth={10}
+                          fill="red"
+                          stroke="red"
+                          opacity={queryImageOpacity} // Set the opacity to match the query image
+                        />
+                      </>
+                    )}
+                  </Layer>
+                </Stage>
+              </div>
+            )}
+          </div>
+          {showOriginalScene && (
+            <div className="image-wrapper">
+              <h3>Original Scene</h3>
+              {originalSceneImage && <img src={originalSceneImage} alt="Original Scene" className="half-width-image" />}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Button container */}
+      <div
+        className="button-container"
+        style={{
+          width: '250px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          padding: '10px',
+          backgroundColor: '#f0f0f0',
+          boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)',
+        }}
+      >
+        <input
+          type="file"
+          webkitdirectory="true"
+          directory="true"
+          onChange={handleLoadDirectory}
           ref={inputRef} // Attach the ref to the input element
         />
-        <button onClick={() => setDrawMode('draw')}>Draw</button>
-        <button onClick={() => setDrawMode('erase')}>Erase</button>
-        <button onClick={handleClear}>Clear Canvas</button>
-        {drawMode === 'draw' && isRectPending && (
-          <>
-            <button onClick={handleConfirmRectangle}>Confirm Rectangle</button>
-            <button onClick={handleClearProposedRect}>Clear Proposed Rectangle</button>
-          </>
-        )}
+        <button onClick={handleSave}>Save Mask</button>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: '10px',
+          }}
+        >
+        <button
+          onClick={handlePreviousFolder}
+          style={{
+            fontSize: '16px',
+            padding: '10px',
+            marginRight: '5px',
+            cursor: 'pointer',
+            backgroundColor: '#f0f0f0',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px', // Space between arrow and text
+          }}
+          aria-label="Previous Folder"
+        >
+          ← <span>Previous Folder</span>
+        </button>
+        <button
+          onClick={handleNextFolder}
+          style={{
+            fontSize: '16px',
+            padding: '10px',
+            marginLeft: '5px',
+            cursor: 'pointer',
+            backgroundColor: '#f0f0f0',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px', // Space between arrow and text
+          }}
+          aria-label="Next Folder"
+        >
+          <span>Next Folder</span> →
+        </button>
+      </div>
+      <button onClick={handleClear}>Clear Canvas</button>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginTop: '10px',
+          gap: '10px', // Spacing between buttons
+        }}
+      >
+        <button
+          onClick={() => setDrawMode('draw')}
+          style={{
+            fontSize: '16px',
+            padding: '10px 20px',
+            cursor: 'pointer',
+            backgroundColor: drawMode === 'draw' ? '#4caf50' : '#f0f0f0', // Darker green if active
+            color: drawMode === 'draw' ? 'white' : 'black', // White text if active
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+          }}
+        >
+          Draw
+        </button>
+        <button
+          onClick={() => setDrawMode('erase')}
+          style={{
+            fontSize: '16px',
+            padding: '10px 20px',
+            cursor: 'pointer',
+            backgroundColor: drawMode === 'erase' ? '#4caf50' : '#f0f0f0', // Darker green if active
+            color: drawMode === 'erase' ? 'white' : 'black', // White text if active
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+          }}
+        >
+          Erase
+        </button>
+      </div>
+      {drawMode === 'draw' && isRectPending && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: '10px',
+            gap: '10px', // Spacing between buttons
+          }}
+        >
+          <button
+            onClick={handleConfirmRectangle}
+            style={{
+              fontSize: '16px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              backgroundColor: '#4caf50', // Green background for confirm
+              color: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+            }}
+          >
+            Confirm Rectangle
+          </button>
+          <button
+            onClick={handleClearProposedRect}
+            style={{
+              fontSize: '16px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              backgroundColor: '#f44336', // Red background for clear
+              color: 'white',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+            }}
+          >
+            Clear Proposed Rectangle
+          </button>
+        </div>
+      )}
         {!isRectPending && (
-          <button onClick={handleRotate}>Rotate</button>
+          <button onClick={handleRotate}>Rotate Object</button>
         )}
-        <button onClick={handleSave}>Save</button>
-        <button onClick={handlePreviousFolder}>Previous Folder</button>
-        <button onClick={handleNextFolder}>Next Folder</button>
         <button onClick={() => setShowOriginalScene(!showOriginalScene)}>
           {showOriginalScene ? 'Hide Original Scene' : 'Show Original Scene'}
         </button>
@@ -435,101 +663,6 @@ const App = () => {
           />
         </div>
       </div>
-      <div className="folder-name">
-        <h2>
-          Current Subscene: {currentFolderName} | To Place: {infoName}
-        </h2>
-        {isAnnotated && <span style={{ color: 'green', fontSize: '24px' }}>✔️ Annotated</span>}
-      </div>
-
-      <div className="image-container" style={{ display: 'flex', justifyContent: showOriginalScene ? 'space-between' : 'center' }}>
-        <div className="image-wrapper" style={{ position: 'relative' }}>
-          {keyImage && (
-          <div style={{ marginBottom: '10px' }}>
-            <img src={keyImage} alt="Key" className="key-image" />
-          </div>
-          )}
-          <h3>Partial Scene</h3>
-
-          {sceneImage && (
-            <div style={{ position: 'relative' }}>
-              <img
-                src={sceneImage}
-                alt="Scene"
-                className={showOriginalScene ? 'half-width-image' : 'full-width-image'}
-                ref={imageRef}
-                onLoad={() => {
-                  if (imageRef.current) {
-                    const rect = imageRef.current.getBoundingClientRect();
-                    setImageSize({ width: rect.width, height: rect.height });
-                  }
-                }}
-                style={{ position: 'relative', zIndex: 1 }}
-              />
-              <Stage
-                width={imageSize.width}
-                height={imageSize.height}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                ref={stageRef}
-                style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
-              >
-                <Layer ref={layerRef}>
-                  {drawGrid()}
-                  {drawFilledCells()}
-                  {proposedRect && (
-                    <Rect
-                      x={Math.min(proposedRect.startX, proposedRect.endX) * (imageSize.width / GRID_WIDTH)}
-                      y={Math.min(proposedRect.startY, proposedRect.endY) * (imageSize.height / GRID_HEIGHT)}
-                      width={Math.abs(proposedRect.endX - proposedRect.startX) * (imageSize.width / GRID_WIDTH)}
-                      height={Math.abs(proposedRect.endY - proposedRect.startY) * (imageSize.height / GRID_HEIGHT)}
-                      fill="rgba(0, 0, 0, 0.3)" // Semi-transparent fill for the proposed rectangle
-                      stroke="black" // Outline of the proposed rectangle
-                      strokeWidth={1}
-                    />
-                  )}
-                  {hoverImage && (
-                    <>
-                      <KonvaImage
-                        image={hoverImage}
-                        x={hoverRect.x + (imageSize.width / GRID_WIDTH) * rectWidth / 2}
-                        y={hoverRect.y + (imageSize.height / GRID_HEIGHT) * rectHeight / 2}
-                        width={(imageSize.width / GRID_WIDTH) * rectWidth}
-                        height={(imageSize.height / GRID_HEIGHT) * rectHeight}
-                        opacity={queryImageOpacity} // Set the opacity based on the query image slider value
-                        rotation={rotation} // Rotate by 90 degrees each time the button is pressed
-                        offsetX={(imageSize.width / GRID_WIDTH) * rectWidth / 2}
-                        offsetY={(imageSize.height / GRID_HEIGHT) * rectHeight / 2}
-                      />
-                      <Arrow
-                        points={calculateArrowPoints(
-                          hoverRect.x + (imageSize.width / GRID_WIDTH) * rectWidth / 2,
-                          hoverRect.y + (imageSize.height / GRID_HEIGHT) * rectHeight / 2,
-                          30, // Arrow length
-                          rotation // Rotation in degrees
-                        )}
-                        pointerLength={10}
-                        pointerWidth={10}
-                        fill="red"
-                        stroke="red"
-                        opacity={queryImageOpacity} // Set the opacity to match the query image
-                      />
-                    </>
-                  )}
-                </Layer>
-              </Stage>
-            </div>
-          )}
-        </div>
-        {showOriginalScene && (
-          <div className="image-wrapper">
-            <h3>Original Scene</h3>
-            {originalSceneImage && <img src={originalSceneImage} alt="Original Scene" className="half-width-image" />}
-          </div>
-        )}
-      </div>
-
     </div>
   );
 };
